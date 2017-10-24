@@ -1,0 +1,13 @@
+.DayCalendar {
+  display: flex;
+  flex-direction: row;
+}
+
+.DayCalendar__events {
+  position: relative;
+  width: 620px;
+  height: 720px;
+  background: #ececec;
+  border: 0;
+  border-left: 1px solid #d5d5d5;
+}
