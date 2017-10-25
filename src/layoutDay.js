@@ -8,74 +8,71 @@ const areOverlapping = (e1, e2) =>
   (e1.start <= e2.start && e2.start <= e1.end) ||
   (e1.start >= e2.start && e1.start <= e2.end);
 
+// Overlap but not the same event
+const areSiblings = (e1, e2) => e1 !== e2 && areOverlapping(e1, e2);
+
 // Assumes event not already in column !
 const overlapsWithColumn = (event, events) =>
   events.some(colEvent => areOverlapping(event, colEvent));
 
 const layoutDay = events => {
   // Looks better sorted
-  // const sortedEvents = [...events];
-  const sortedEvents = [...events].sort((e1, e2) => e1.start - e2.start);
+  // const sortedEvents = [...events].sort((e1, e2) => e1.start - e2.start);
+  const sortedEvents = [...events];
   const layout = [];
 
   // Place into columns
   const columns = [];
   for (const event of sortedEvents) {
-    // First event
-    if (columns.length === 0) {
-      columns.push([event]);
-      continue;
-    }
-
-    let placed = false;
     for (let colIdx = 0; colIdx < columns.length; colIdx++) {
       const column = columns[colIdx];
       const overlapsInColumn = overlapsWithColumn(event, column);
 
       // No overlap ? place event in column
       if (!overlapsInColumn) {
-        placed = true;
+        event._columnIndex = colIdx;
         column.push(event);
         break;
       }
     }
 
     // Couldn't place event ? Create a new column then !
-    if (!placed) {
+    if (event._columnIndex === undefined) {
+      event._columnIndex = columns.length;
       columns.push([event]);
     }
   }
 
-  // Final pass => compute width and place events
-  const columnsCount = columns.length;
-  const columnWidth = REAL_WIDTH / columnsCount;
-  for (let colIdx = 0; colIdx < columnsCount; colIdx++) {
-    const column = columns[colIdx];
-    for (let j = 0; j < column.length; j++) {
-      const event = column[j];
-      let span = 1;
-
-      for (let k = colIdx + 1; k < columnsCount; k++) {
-        const nextColumn = columns[k];
-        const overlapsWithNextColumn = overlapsWithColumn(event, nextColumn);
-
-        if (!overlapsWithNextColumn) {
-          span += 1;
-        } else {
-          break;
-        }
+  // Compute siblings graph
+  for (const event of events) {
+    event._siblings = [];
+    for (const event2 of events) {
+      if (areSiblings(event, event2)) {
+        event._siblings.push(event2);
       }
-
-      // Place event, hurray \o/
-      layout.push({
-        x: Math.round(PADDING + colIdx * columnWidth),
-        y: Math.round(event.start / MAX_MINUTES * CONTAINER_HEIGHT),
-        width: Math.round(columnWidth * span),
-        height: Math.round(
-          (event.end - event.start) / MAX_MINUTES * CONTAINER_HEIGHT
-        ),
-      });
     }
+  }
+
+  // Final layout
+  for (const event of events) {
+    // Must compute the local column max in the event siblings cluster
+    const colNb = Math.max(
+      event._columnIndex,
+      ...event._siblings.map(e => e._columnIndex)
+    );
+    // 0 indexed -> +1
+    const columnWidth = REAL_WIDTH / (colNb + 1);
+
+    const eventLayout = {
+      x: Math.round(PADDING + event._columnIndex * columnWidth),
+      y: Math.round(event.start / MAX_MINUTES * CONTAINER_HEIGHT),
+      width: columnWidth,
+      height: Math.round(
+        (event.end - event.start) / MAX_MINUTES * CONTAINER_HEIGHT
+      ),
+    };
+
+    layout.push(eventLayout);
   }
 
   return layout;
