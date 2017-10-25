@@ -61,6 +61,8 @@ const layoutDay = events => {
 
         if (!overlapsWithNextColumn) {
           span += 1;
+        } else {
+          break;
         }
       }
 
@@ -76,7 +78,6 @@ const layoutDay = events => {
     }
   }
 
-  console.log(layout);
   return layout;
 };
 
