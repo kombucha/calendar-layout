@@ -15,6 +15,17 @@ const areSiblings = (e1, e2) => e1 !== e2 && areOverlapping(e1, e2);
 const overlapsWithColumn = (event, events) =>
   events.some(colEvent => areOverlapping(event, colEvent));
 
+const siblingsCluster = (ev, cluster = new Set([ev])) => {
+  ev._siblings.forEach(e => {
+    if (!cluster.has(e)) {
+      cluster.add(e);
+      siblingsCluster(e, cluster);
+    }
+  });
+
+  return [...cluster];
+};
+
 const layoutDay = events => {
   // Looks better sorted
   // const sortedEvents = [...events].sort((e1, e2) => e1.start - e2.start);
@@ -56,10 +67,7 @@ const layoutDay = events => {
   // Final layout
   for (const event of events) {
     // Must compute the local column max in the event siblings cluster
-    const colNb = Math.max(
-      event._columnIndex,
-      ...event._siblings.map(e => e._columnIndex)
-    );
+    const colNb = Math.max(...siblingsCluster(event).map(e => e._columnIndex));
     // 0 indexed -> +1
     const columnWidth = REAL_WIDTH / (colNb + 1);
 
